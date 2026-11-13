@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="TimeSeriesApi.Tests/TimeSeriesApi.Tests.csproj" />
+  <Project Path="TimeSeriesApi/TimeSeriesApi.csproj" />
+</Solution>

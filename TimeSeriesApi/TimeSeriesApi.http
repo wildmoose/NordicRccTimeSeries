@@ -1,0 +1,40 @@
+@host = http://localhost:5213
+
+### Create a cross-border flow DK2 -> SE4
+POST {{host}}/api/timeseries
+Content-Type: application/json
+
+{
+  "type": "CrossBorderFlow",
+  "biddingZone": "DK2",
+  "toBiddingZone": "SE4",
+  "resolution": "PT15M",
+  "start": "2026-11-13T00:00:00Z",
+  "unit": "MW",
+  "points": [
+    { "position": 1, "quantity": 412.5 },
+    { "position": 2, "quantity": 398.0 },
+    { "position": 3, "quantity": 405.25 },
+    { "position": 4, "quantity": 420.0 }
+  ]
+}
+
+### Filter by zone and overlapping interval
+GET {{host}}/api/timeseries?biddingZone=SE4&from=2026-11-13T00:30:00Z&to=2026-11-13T02:00:00Z
+Accept: application/json
+
+### Invalid: flow to the same zone (expect 400)
+POST {{host}}/api/timeseries
+Content-Type: application/json
+
+{
+  "type": "CrossBorderFlow",
+  "biddingZone": "DK2",
+  "toBiddingZone": "DK2",
+  "resolution": "PT60M",
+  "start": "2026-11-13T00:00:00Z",
+  "points": [ { "position": 1, "quantity": 100 } ]
+}
+
+### Unknown id (expect 404)
+GET {{host}}/api/timeseries/00000000-0000-0000-0000-000000000000
