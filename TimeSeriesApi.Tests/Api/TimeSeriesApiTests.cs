@@ -192,5 +192,48 @@ namespace TimeSeriesApi.Tests.Api
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
+
+        [Theory]
+        [InlineData("banana", HttpStatusCode.BadRequest)]
+        [InlineData("mw", HttpStatusCode.BadRequest)]
+        [InlineData("MW", HttpStatusCode.Created)]
+        [InlineData("MWh", HttpStatusCode.Created)]
+        public async Task Unit_must_be_MW_or_MWh(string unit, HttpStatusCode expected)
+        {
+            var body = $$"""{ "type": "Production", "biddingZone": "SE1", "resolution": "PT60M", "start": "2026-11-13T00:00:00Z", "unit": "{{unit}}", "points": [ { "position": 1, "quantity": 1 } ] }""";
+
+            var response = await PostRaw(body);
+
+            Assert.Equal(expected, response.StatusCode);
+        }
+
+        [Theory]
+        [InlineData(TimeSeriesRequest.MaxPoints, HttpStatusCode.Created)]
+        [InlineData(TimeSeriesRequest.MaxPoints + 1, HttpStatusCode.BadRequest)]
+        public async Task Number_of_points_is_limited(int count, HttpStatusCode expected)
+        {
+            var request = TestData.ValidFlow();
+            request.Type = TimeSeriesType.Production;
+            request.ToBiddingZone = null;
+            request.BiddingZone = BiddingZone.NO5;
+            request.Points = Enumerable.Range(1, count)
+                .Select(i => new TimeSeriesPointRequest { Position = i, Quantity = 1m })
+                .ToList();
+
+            var response = await _client.PostAsJsonAsync("/api/timeseries", request, Json);
+
+            Assert.Equal(expected, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task Negative_quantity_returns_400()
+        {
+            var request = TestData.ValidFlow();
+            request.Points[0].Quantity = -1m;
+
+            var response = await _client.PostAsJsonAsync("/api/timeseries", request, Json);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
     }
 }

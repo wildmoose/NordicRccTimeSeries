@@ -136,5 +136,23 @@ namespace TimeSeriesApi.Tests.Services
 
             Assert.Contains(nameof(TimeSeriesRequest.Points), _validator.Validate(request).Keys);
         }
+
+        [Fact]
+        public void Negative_quantity_is_rejected()
+        {
+            var request = TestData.ValidFlow();
+            request.Points[2].Quantity = -0.01m;
+
+            Assert.Contains(nameof(TimeSeriesRequest.Points), _validator.Validate(request).Keys);
+        }
+
+        [Fact]
+        public void Zero_quantity_is_accepted()
+        {
+            var request = TestData.ValidFlow();
+            request.Points[2].Quantity = 0m;
+
+            Assert.Empty(_validator.Validate(request));
+        }
     }
 }

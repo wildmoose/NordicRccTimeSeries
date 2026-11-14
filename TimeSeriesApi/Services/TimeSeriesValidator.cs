@@ -121,6 +121,13 @@ namespace TimeSeriesApi.Services
                 return;
             }
 
+            if (request.Points.Any(p => p.Quantity < 0))
+            {
+                // Decision: all three types are non-negative. A flow is modelled per direction (from -> to),
+                // like the per-direction flow reports in the ENTSO-E transparency data.
+                Add(errors, nameof(request.Points), "Quantity must not be negative. Use the opposite direction for a flow the other way.");
+            }
+
             var positions = request.Points.Select(p => p.Position!.Value).OrderBy(p => p).ToList();
             var expected = Enumerable.Range(1, positions.Count);
 
