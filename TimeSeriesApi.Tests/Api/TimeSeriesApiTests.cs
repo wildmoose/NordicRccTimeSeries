@@ -254,5 +254,14 @@ namespace TimeSeriesApi.Tests.Api
                 Assert.True(problem.Extensions.ContainsKey("traceId"));
             }
         }
+
+        [Fact]
+        public async Task Health_endpoint_returns_200()
+        {
+            var response = await _client.GetAsync("/health");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("Healthy", await response.Content.ReadAsStringAsync());
+        }
     }
 }

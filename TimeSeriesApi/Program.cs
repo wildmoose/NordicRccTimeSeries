@@ -27,6 +27,7 @@ namespace TimeSeriesApi
             // RFC 9457 problem details for all error responses (400, 404, 500 ...).
             builder.Services.AddProblemDetails();
             builder.Services.AddOpenApi();
+            builder.Services.AddHealthChecks();
 
             builder.Services.AddSingleton(TimeProvider.System);
             builder.Services.AddSingleton<ITimeSeriesRepository, InMemoryTimeSeriesRepository>();
@@ -44,8 +45,14 @@ namespace TimeSeriesApi
                 app.MapScalarApiReference();
             }
 
-            app.UseHttpsRedirection();
+            // Locally the app runs on plain http (see launchSettings.json), where the redirect only logs a warning.
+            if (!app.Environment.IsDevelopment())
+            {
+                app.UseHttpsRedirection();
+            }
+
             app.MapControllers();
+            app.MapHealthChecks("/health");
 
             app.Run();
         }
