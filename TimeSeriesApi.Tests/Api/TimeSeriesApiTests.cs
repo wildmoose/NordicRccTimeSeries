@@ -235,5 +235,24 @@ namespace TimeSeriesApi.Tests.Api
 
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
+
+        [Fact]
+        public async Task Validation_errors_have_the_same_problem_details_shape_as_framework_errors()
+        {
+            // Business rule (our validator) and missing field (the framework) must look the same to a client.
+            var businessRule = TestData.ValidFlow();
+            businessRule.ToBiddingZone = businessRule.BiddingZone;
+            var fromValidator = await _client.PostAsJsonAsync("/api/timeseries", businessRule, Json);
+            var fromFramework = await PostRaw("""{ "biddingZone": "DK1", "resolution": "PT60M", "start": "2026-11-13T00:00:00Z", "points": [ { "position": 1, "quantity": 1 } ] }""");
+
+            foreach (var response in new[] { fromValidator, fromFramework })
+            {
+                Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+                var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(Json);
+                Assert.False(string.IsNullOrEmpty(problem!.Type));
+                Assert.Equal(400, problem.Status);
+                Assert.True(problem.Extensions.ContainsKey("traceId"));
+            }
+        }
     }
 }

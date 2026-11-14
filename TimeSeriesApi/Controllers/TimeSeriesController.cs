@@ -29,7 +29,7 @@ namespace TimeSeriesApi.Controllers
             var errors = _validator.Validate(query);
             if (errors.Count > 0)
             {
-                return ValidationProblem(new ValidationProblemDetails(errors));
+                return ValidationFailed(errors);
             }
 
             var series = await _repository.GetAsync(query, ct);
@@ -58,7 +58,7 @@ namespace TimeSeriesApi.Controllers
             var errors = _validator.Validate(request);
             if (errors.Count > 0)
             {
-                return ValidationProblem(new ValidationProblemDetails(errors));
+                return ValidationFailed(errors);
             }
 
             var created = await _repository.AddAsync(TimeSeriesMapper.ToDomain(request), ct);
@@ -77,7 +77,7 @@ namespace TimeSeriesApi.Controllers
             var errors = _validator.Validate(request);
             if (errors.Count > 0)
             {
-                return ValidationProblem(new ValidationProblemDetails(errors));
+                return ValidationFailed(errors);
             }
 
             var series = TimeSeriesMapper.ToDomain(request);
@@ -98,6 +98,23 @@ namespace TimeSeriesApi.Controllers
             }
 
             return NoContent();
+        }
+
+        /// <summary>
+        /// Turns validator errors into the same 400 response the framework produces for model errors.
+        /// Going through ModelState makes ASP.NET add "type" and "traceId" like it does everywhere else.
+        /// </summary>
+        private ActionResult ValidationFailed(Dictionary<string, string[]> errors)
+        {
+            foreach (var (field, messages) in errors)
+            {
+                foreach (var message in messages)
+                {
+                    ModelState.AddModelError(field, message);
+                }
+            }
+
+            return ValidationProblem(ModelState);
         }
     }
 }
