@@ -154,5 +154,45 @@ namespace TimeSeriesApi.Tests.Services
 
             Assert.Empty(_validator.Validate(request));
         }
+
+        [Theory]
+        [InlineData(0, 1, 0)]    // 1 second
+        [InlineData(0, 0, 500)]  // 500 milliseconds
+        public void Start_with_seconds_or_milliseconds_is_rejected(int minute, int second, int millisecond)
+        {
+            var request = TestData.ValidFlow();
+            request.Start = new DateTimeOffset(2026, 11, 13, 10, minute, second, millisecond, TimeSpan.Zero);
+
+            Assert.Contains(nameof(TimeSeriesRequest.Start), _validator.Validate(request).Keys);
+        }
+
+        [Theory]
+        [InlineData(Resolution.PT60M, 0, true)]
+        [InlineData(Resolution.PT60M, 30, false)]   // aligned to 15 minutes, but not to an hour
+        [InlineData(Resolution.PT60M, 15, false)]
+        [InlineData(Resolution.PT15M, 15, true)]
+        [InlineData(Resolution.PT15M, 45, true)]
+        public void Start_alignment_depends_on_resolution(Resolution resolution, int minute, bool valid)
+        {
+            var request = TestData.ValidFlow();
+            request.Resolution = resolution;
+            request.Start = new DateTimeOffset(2026, 11, 13, 10, minute, 0, TimeSpan.Zero);
+
+            Assert.Equal(valid, !_validator.Validate(request).ContainsKey(nameof(TimeSeriesRequest.Start)));
+        }
+
+        [Theory]
+        [InlineData(60, 1, 0, true)]     // 01:00+01:00 = 00:00Z
+        [InlineData(60, 1, 30, false)]   // 01:30+01:00 = 00:30Z
+        [InlineData(330, 5, 30, true)]   // 05:30+05:30 = 00:00Z: alignment is checked in UTC, not on the local wall clock
+        [InlineData(330, 5, 0, false)]   // 05:00+05:30 = 23:30Z the day before
+        public void Start_alignment_is_checked_in_utc_for_hourly_series(int offsetMinutes, int hour, int minute, bool valid)
+        {
+            var request = TestData.ValidFlow();
+            request.Resolution = Resolution.PT60M;
+            request.Start = new DateTimeOffset(2026, 11, 13, hour, minute, 0, TimeSpan.FromMinutes(offsetMinutes));
+
+            Assert.Equal(valid, !_validator.Validate(request).ContainsKey(nameof(TimeSeriesRequest.Start)));
+        }
     }
 }
