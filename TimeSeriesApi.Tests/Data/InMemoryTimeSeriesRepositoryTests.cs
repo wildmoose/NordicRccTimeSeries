@@ -128,7 +128,7 @@ namespace TimeSeriesApi.Tests.Data
                 await Task.WhenAll(update, delete);
 
                 // Whatever the interleaving, the delete succeeded and the series is gone afterwards.
-                Assert.True(delete.Result);
+                Assert.True(await delete);
                 Assert.Null(await _repository.GetByIdAsync(created.Id, CancellationToken.None));
             }
         }

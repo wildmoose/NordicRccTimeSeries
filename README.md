@@ -117,7 +117,3 @@ whether the error comes from model validation, our own validator, or an unexpect
 - API versioning, rate limiting, readiness checks and structured logging/OpenTelemetry.
 - More resolutions and unit conversion (MW / MWh).
 - Time zone handling for the Nordic day (CET/CEST): a local day is 23 or 25 hours long on the DST switch.
-
-## Assignment
-
-The assignment brief: <ADD LINK HERE>
