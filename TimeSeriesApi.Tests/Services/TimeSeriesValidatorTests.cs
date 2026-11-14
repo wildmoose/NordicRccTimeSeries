@@ -109,5 +109,32 @@ namespace TimeSeriesApi.Tests.Services
             Assert.Contains(nameof(TimeSeriesRequest.BiddingZone), errors.Keys);
             Assert.Contains(nameof(TimeSeriesRequest.ToBiddingZone), errors.Keys);
         }
+
+        [Fact]
+        public void Null_point_is_rejected_instead_of_throwing()
+        {
+            var request = TestData.ValidFlow();
+            request.Points.Add(null!);
+
+            Assert.Contains(nameof(TimeSeriesRequest.Points), _validator.Validate(request).Keys);
+        }
+
+        [Fact]
+        public void Point_without_quantity_is_rejected()
+        {
+            var request = TestData.ValidFlow();
+            request.Points[1].Quantity = null;
+
+            Assert.Contains(nameof(TimeSeriesRequest.Points), _validator.Validate(request).Keys);
+        }
+
+        [Fact]
+        public void Point_without_position_is_rejected()
+        {
+            var request = TestData.ValidFlow();
+            request.Points[1].Position = null;
+
+            Assert.Contains(nameof(TimeSeriesRequest.Points), _validator.Validate(request).Keys);
+        }
     }
 }

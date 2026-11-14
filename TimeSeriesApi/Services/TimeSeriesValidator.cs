@@ -113,7 +113,15 @@ namespace TimeSeriesApi.Services
                 return;
             }
 
-            var positions = request.Points.Select(p => p.Position).OrderBy(p => p).ToList();
+            // A null element or a point without position/quantity cannot be checked further.
+            // Model validation reports missing fields on real requests; this guards direct callers and null elements.
+            if (request.Points.Any(p => p is null || p.Position is null || p.Quantity is null))
+            {
+                Add(errors, nameof(request.Points), "Every point must have a position and a quantity.");
+                return;
+            }
+
+            var positions = request.Points.Select(p => p.Position!.Value).OrderBy(p => p).ToList();
             var expected = Enumerable.Range(1, positions.Count);
 
             if (!positions.SequenceEqual(expected))

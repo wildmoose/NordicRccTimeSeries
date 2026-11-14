@@ -121,5 +121,29 @@ namespace TimeSeriesApi.Tests.Api
 
         private Task<HttpResponseMessage> PostRaw(string body) =>
             _client.PostAsync("/api/timeseries", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+
+        [Fact]
+        public async Task Null_point_returns_400_not_500()
+        {
+            var body = """{ "type": "Production", "biddingZone": "DK1", "resolution": "PT60M", "start": "2026-11-13T00:00:00Z", "points": [ null ] }""";
+
+            var response = await PostRaw(body);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Theory]
+        [InlineData("""{ "position": 1 }""", "Quantity")]
+        [InlineData("""{ "quantity": 5 }""", "Position")]
+        public async Task Point_with_missing_field_returns_400_naming_the_field(string point, string expectedField)
+        {
+            var body = $$"""{ "type": "Production", "biddingZone": "DK1", "resolution": "PT60M", "start": "2026-11-13T00:00:00Z", "points": [ {{point}} ] }""";
+
+            var response = await PostRaw(body);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(Json);
+            Assert.Contains(problem!.Errors.Keys, key => key.Contains(expectedField));
+        }
     }
 }

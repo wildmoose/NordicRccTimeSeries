@@ -21,7 +21,7 @@ namespace TimeSeriesApi.Services
                 Unit = request.Unit,
                 Points = request.Points
                     .OrderBy(p => p.Position)
-                    .Select(p => new TimeSeriesPoint { Position = p.Position, Quantity = p.Quantity })
+                    .Select(p => new TimeSeriesPoint { Position = p.Position!.Value, Quantity = p.Quantity!.Value })
                     .ToList()
             };
         }
