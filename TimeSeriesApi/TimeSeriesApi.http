@@ -1,6 +1,6 @@
 @host = http://localhost:5213
 
-### Create a cross-border flow DK2 -> SE4
+### Create a cross-border flow DK2 -> SE4 (expect 201)
 POST {{host}}/api/timeseries
 Content-Type: application/json
 
@@ -19,8 +19,25 @@ Content-Type: application/json
   ]
 }
 
-### Filter by zone and overlapping interval
+### Same instant, written with an offset: 01:00+01:00 is 00:00Z (expect 201, start returned as 00:00 UTC)
+POST {{host}}/api/timeseries
+Content-Type: application/json
+
+{
+  "type": "Production",
+  "biddingZone": "DK1",
+  "resolution": "PT60M",
+  "start": "2026-11-13T01:00:00+01:00",
+  "unit": "MWh",
+  "points": [ { "position": 1, "quantity": 250 }, { "position": 2, "quantity": 260 } ]
+}
+
+### Filter by zone and overlapping interval (expect 200 with the flow)
 GET {{host}}/api/timeseries?biddingZone=SE4&from=2026-11-13T00:30:00Z&to=2026-11-13T02:00:00Z
+Accept: application/json
+
+### Filter with an offset: "+" must be written as %2B in a URL (expect 200)
+GET {{host}}/api/timeseries?from=2026-11-13T01:30:00%2B01:00&to=2026-11-13T03:00:00%2B01:00
 Accept: application/json
 
 ### Invalid: flow to the same zone (expect 400)
@@ -36,5 +53,45 @@ Content-Type: application/json
   "points": [ { "position": 1, "quantity": 100 } ]
 }
 
+### Invalid: numeric enum (expect 400, and the store is not poisoned)
+POST {{host}}/api/timeseries
+Content-Type: application/json
+
+{
+  "type": "Production",
+  "biddingZone": "DK1",
+  "resolution": 99,
+  "start": "2026-11-13T00:00:00Z",
+  "points": [ { "position": 1, "quantity": 1 } ]
+}
+
+### Invalid: start without Z or offset (expect 400)
+POST {{host}}/api/timeseries
+Content-Type: application/json
+
+{
+  "type": "Production",
+  "biddingZone": "DK1",
+  "resolution": "PT60M",
+  "start": "2026-10-25T00:00:00",
+  "points": [ { "position": 1, "quantity": 1 } ]
+}
+
+### Invalid: unknown unit and missing quantity (expect 400 with both errors)
+POST {{host}}/api/timeseries
+Content-Type: application/json
+
+{
+  "type": "Production",
+  "biddingZone": "DK1",
+  "resolution": "PT60M",
+  "start": "2026-11-13T00:00:00Z",
+  "unit": "banana",
+  "points": [ { "position": 1 } ]
+}
+
 ### Unknown id (expect 404)
 GET {{host}}/api/timeseries/00000000-0000-0000-0000-000000000000
+
+### Health check (expect 200 Healthy)
+GET {{host}}/health
