@@ -145,5 +145,52 @@ namespace TimeSeriesApi.Tests.Api
             var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(Json);
             Assert.Contains(problem!.Errors.Keys, key => key.Contains(expectedField));
         }
+
+        [Fact]
+        public async Task Start_without_offset_returns_400()
+        {
+            var body = """{ "type": "Production", "biddingZone": "DK1", "resolution": "PT60M", "start": "2026-10-25T00:00:00", "points": [ { "position": 1, "quantity": 1 } ] }""";
+
+            var response = await PostRaw(body);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(Json);
+            Assert.Contains(problem!.Errors.Keys, key => key.Contains("start", StringComparison.OrdinalIgnoreCase));
+        }
+
+        [Fact]
+        public async Task Start_with_offset_is_stored_as_the_same_instant()
+        {
+            // 01:00+01:00 is 00:00 UTC, which is aligned for PT60M.
+            var body = """{ "type": "Production", "biddingZone": "FI", "resolution": "PT60M", "start": "2026-11-13T01:00:00+01:00", "points": [ { "position": 1, "quantity": 1 } ] }""";
+
+            var response = await PostRaw(body);
+
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            var created = await response.Content.ReadFromJsonAsync<TimeSeriesResponse>(Json);
+            Assert.Equal(new DateTimeOffset(2026, 11, 13, 0, 0, 0, TimeSpan.Zero), created!.Start.ToUniversalTime());
+        }
+
+        [Theory]
+        [InlineData("from=2026-11-13T00:30:00")]
+        [InlineData("to=2026-11-13T02:00:00")]
+        [InlineData("from=2026-11-13")]
+        [InlineData("from=2026-11-13T00:30:00%202:00")]
+        public async Task Query_timestamp_without_offset_returns_400(string query)
+        {
+            var response = await _client.GetAsync($"/api/timeseries?{query}");
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(Json);
+            Assert.Contains(problem!.Errors.Keys, key => key is "From" or "To");
+        }
+
+        [Fact]
+        public async Task Query_timestamp_with_encoded_offset_is_accepted()
+        {
+            var response = await _client.GetAsync("/api/timeseries?from=2026-11-13T01:00:00%2B01:00&to=2026-11-13T03:00:00%2B01:00");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
     }
 }

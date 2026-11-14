@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Scalar.AspNetCore;
 using TimeSeriesApi.Data;
+using TimeSeriesApi.Serialization;
 using TimeSeriesApi.Services;
 
 namespace TimeSeriesApi
@@ -18,6 +19,9 @@ namespace TimeSeriesApi
                     // Enums as "DK1" / "Production" in both requests and responses.
                     // Integers are rejected: "resolution": 99 must not slip through as an undefined enum value.
                     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false));
+
+                    // Timestamps in request bodies must carry "Z" or an offset; no silent server-local time.
+                    options.JsonSerializerOptions.Converters.Add(new StrictDateTimeOffsetJsonConverter());
                 });
 
             // RFC 9457 problem details for all error responses (400, 404, 500 ...).
