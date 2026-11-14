@@ -15,8 +15,9 @@ namespace TimeSeriesApi
                 .AddControllers()
                 .AddJsonOptions(options =>
                 {
-                    // Enums as "DK1" / "Production" instead of 0 / 1 in both requests and responses.
-                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                    // Enums as "DK1" / "Production" in both requests and responses.
+                    // Integers are rejected: "resolution": 99 must not slip through as an undefined enum value.
+                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false));
                 });
 
             // RFC 9457 problem details for all error responses (400, 404, 500 ...).

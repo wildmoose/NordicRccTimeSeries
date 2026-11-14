@@ -24,6 +24,7 @@ namespace TimeSeriesApi.Services
         {
             var errors = new Dictionary<string, List<string>>();
 
+            ValidateEnums(request, errors);
             ValidateZones(request, errors);
             ValidateStart(request, errors);
             ValidatePoints(request, errors);
@@ -41,6 +42,33 @@ namespace TimeSeriesApi.Services
             }
 
             return errors;
+        }
+
+        /// <summary>
+        /// Defence in depth: the JSON converter already rejects numbers and unknown names,
+        /// but an undefined enum value must never reach the domain model, for example via code that builds a request directly.
+        /// </summary>
+        private static void ValidateEnums(TimeSeriesRequest request, Dictionary<string, List<string>> errors)
+        {
+            if (request.Type is { } type && !Enum.IsDefined(type))
+            {
+                Add(errors, nameof(request.Type), "Type is not a known value.");
+            }
+
+            if (request.BiddingZone is { } zone && !Enum.IsDefined(zone))
+            {
+                Add(errors, nameof(request.BiddingZone), "BiddingZone is not a known value.");
+            }
+
+            if (request.ToBiddingZone is { } toZone && !Enum.IsDefined(toZone))
+            {
+                Add(errors, nameof(request.ToBiddingZone), "ToBiddingZone is not a known value.");
+            }
+
+            if (request.Resolution is { } resolution && !Enum.IsDefined(resolution))
+            {
+                Add(errors, nameof(request.Resolution), "Resolution is not a known value.");
+            }
         }
 
         private static void ValidateZones(TimeSeriesRequest request, Dictionary<string, List<string>> errors)
@@ -64,13 +92,13 @@ namespace TimeSeriesApi.Services
 
         private static void ValidateStart(TimeSeriesRequest request, Dictionary<string, List<string>> errors)
         {
-            if (request.Start is null || request.Resolution is null)
+            if (request.Start is null || request.Resolution is not { } resolution || !Enum.IsDefined(resolution))
             {
                 return;
             }
 
             var start = request.Start.Value.ToUniversalTime();
-            var minutes = request.Resolution == Resolution.PT15M ? 15 : 60;
+            var minutes = resolution == Resolution.PT15M ? 15 : 60;
 
             if (start.Second != 0 || start.Millisecond != 0 || start.Minute % minutes != 0)
             {

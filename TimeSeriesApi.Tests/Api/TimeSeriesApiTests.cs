@@ -102,5 +102,24 @@ namespace TimeSeriesApi.Tests.Api
             var response = await _client.GetAsync($"/api/timeseries/{Guid.NewGuid()}");
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
+
+        [Theory]
+        [InlineData("""{ "type": "Production", "biddingZone": "DK1", "resolution": 99, "start": "2026-11-13T00:00:00Z", "points": [ { "position": 1, "quantity": 1 } ] }""")]
+        [InlineData("""{ "type": "Production", "biddingZone": 99, "resolution": "PT60M", "start": "2026-11-13T00:00:00Z", "points": [ { "position": 1, "quantity": 1 } ] }""")]
+        [InlineData("""{ "type": 0, "biddingZone": "DK1", "resolution": "PT60M", "start": "2026-11-13T00:00:00Z", "points": [ { "position": 1, "quantity": 1 } ] }""")]
+        [InlineData("""{ "type": "Production", "biddingZone": "DK1", "resolution": "1", "start": "2026-11-13T00:00:00Z", "points": [ { "position": 1, "quantity": 1 } ] }""")]
+        public async Task Numeric_enum_values_return_400_and_do_not_poison_the_store(string body)
+        {
+            var response = await PostRaw(body);
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+            // Before the fix the invalid series was stored, and every list request returned 500 afterwards.
+            var list = await _client.GetAsync("/api/timeseries");
+            Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+        }
+
+        private Task<HttpResponseMessage> PostRaw(string body) =>
+            _client.PostAsync("/api/timeseries", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
     }
 }

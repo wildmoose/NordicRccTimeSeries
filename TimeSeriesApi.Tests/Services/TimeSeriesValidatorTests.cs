@@ -85,5 +85,29 @@ namespace TimeSeriesApi.Tests.Services
 
             Assert.NotEmpty(_validator.Validate(query));
         }
+
+        [Fact]
+        public void Undefined_resolution_is_rejected()
+        {
+            var request = TestData.ValidFlow();
+            request.Resolution = (Resolution)99;
+
+            Assert.Contains(nameof(TimeSeriesRequest.Resolution), _validator.Validate(request).Keys);
+        }
+
+        [Fact]
+        public void Undefined_zones_and_type_are_rejected()
+        {
+            var request = TestData.ValidFlow();
+            request.Type = (TimeSeriesType)99;
+            request.BiddingZone = (BiddingZone)99;
+            request.ToBiddingZone = (BiddingZone)98;
+
+            var errors = _validator.Validate(request);
+
+            Assert.Contains(nameof(TimeSeriesRequest.Type), errors.Keys);
+            Assert.Contains(nameof(TimeSeriesRequest.BiddingZone), errors.Keys);
+            Assert.Contains(nameof(TimeSeriesRequest.ToBiddingZone), errors.Keys);
+        }
     }
 }
