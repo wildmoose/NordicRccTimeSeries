@@ -83,12 +83,7 @@ namespace TimeSeriesApi.Controllers
             var series = TimeSeriesMapper.ToDomain(request);
             series.Id = id;
 
-            if (!await _repository.UpdateAsync(series, ct))
-            {
-                return NotFound();
-            }
-
-            var updated = await _repository.GetByIdAsync(id, ct);
+            var updated = await _repository.UpdateAsync(series, ct);
             return updated is null ? NotFound() : Ok(TimeSeriesMapper.ToResponse(updated));
         }
 

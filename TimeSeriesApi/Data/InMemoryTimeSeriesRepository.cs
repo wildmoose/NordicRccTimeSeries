@@ -48,6 +48,7 @@ namespace TimeSeriesApi.Data
             IReadOnlyList<TimeSeries> list = result
                 .OrderBy(s => s.Start)
                 .ThenBy(s => s.BiddingZone)
+                .ThenBy(s => s.Id) // Deterministic order when start and zone are equal.
                 .Select(Copy)
                 .ToList();
 
@@ -72,7 +73,7 @@ namespace TimeSeriesApi.Data
             return Task.FromResult(Copy(stored));
         }
 
-        public Task<bool> UpdateAsync(TimeSeries series, CancellationToken ct)
+        public Task<TimeSeries?> UpdateAsync(TimeSeries series, CancellationToken ct)
         {
             while (_store.TryGetValue(series.Id, out var existing))
             {
@@ -83,11 +84,12 @@ namespace TimeSeriesApi.Data
                 // Only replace if nobody else changed or deleted it in the meantime.
                 if (_store.TryUpdate(series.Id, updated, existing))
                 {
-                    return Task.FromResult(true);
+                    // Return a copy of what was just written, so the caller never needs a second read that could race with a delete.
+                    return Task.FromResult<TimeSeries?>(Copy(updated));
                 }
             }
 
-            return Task.FromResult(false);
+            return Task.FromResult<TimeSeries?>(null);
         }
 
         public Task<bool> DeleteAsync(Guid id, CancellationToken ct)

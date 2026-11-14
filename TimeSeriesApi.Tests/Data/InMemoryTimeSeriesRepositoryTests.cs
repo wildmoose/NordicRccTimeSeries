@@ -69,7 +69,9 @@ namespace TimeSeriesApi.Tests.Data
             changed.Id = created.Id;
             changed.Points[0].Quantity = 999;
 
-            Assert.True(await _repository.UpdateAsync(changed, CancellationToken.None));
+            var updated = await _repository.UpdateAsync(changed, CancellationToken.None);
+            Assert.NotNull(updated);
+            Assert.Equal(999, updated.Points[0].Quantity);
 
             var stored = await _repository.GetByIdAsync(created.Id, CancellationToken.None);
             Assert.Equal(999, stored!.Points[0].Quantity);
@@ -78,12 +80,12 @@ namespace TimeSeriesApi.Tests.Data
         }
 
         [Fact]
-        public async Task Update_and_delete_of_unknown_id_return_false()
+        public async Task Update_of_unknown_id_returns_null_and_delete_returns_false()
         {
             var series = TimeSeriesMapper.ToDomain(TestData.ValidFlow());
             series.Id = Guid.NewGuid();
 
-            Assert.False(await _repository.UpdateAsync(series, CancellationToken.None));
+            Assert.Null(await _repository.UpdateAsync(series, CancellationToken.None));
             Assert.False(await _repository.DeleteAsync(series.Id, CancellationToken.None));
         }
 
@@ -95,6 +97,40 @@ namespace TimeSeriesApi.Tests.Data
 
             var stored = await _repository.GetByIdAsync(created.Id, CancellationToken.None);
             Assert.Equal(4, stored!.Points.Count);
+        }
+
+        [Fact]
+        public async Task List_order_is_deterministic_when_start_and_zone_are_equal()
+        {
+            for (var i = 0; i < 20; i++)
+            {
+                await _repository.AddAsync(TimeSeriesMapper.ToDomain(TestData.ValidFlow()), CancellationToken.None);
+            }
+
+            var first = await _repository.GetAsync(new TimeSeriesQuery(), CancellationToken.None);
+            var second = await _repository.GetAsync(new TimeSeriesQuery(), CancellationToken.None);
+
+            Assert.Equal(first.Select(s => s.Id), second.Select(s => s.Id));
+            Assert.Equal(first.Select(s => s.Id).Order(), first.Select(s => s.Id));
+        }
+
+        [Fact]
+        public async Task Parallel_update_and_delete_never_resurrects_a_deleted_series()
+        {
+            for (var i = 0; i < 500; i++)
+            {
+                var created = await _repository.AddAsync(TimeSeriesMapper.ToDomain(TestData.ValidFlow()), CancellationToken.None);
+                var replacement = TimeSeriesMapper.ToDomain(TestData.ValidFlow());
+                replacement.Id = created.Id;
+
+                var update = Task.Run(() => _repository.UpdateAsync(replacement, CancellationToken.None));
+                var delete = Task.Run(() => _repository.DeleteAsync(created.Id, CancellationToken.None));
+                await Task.WhenAll(update, delete);
+
+                // Whatever the interleaving, the delete succeeded and the series is gone afterwards.
+                Assert.True(delete.Result);
+                Assert.Null(await _repository.GetByIdAsync(created.Id, CancellationToken.None));
+            }
         }
     }
 }
